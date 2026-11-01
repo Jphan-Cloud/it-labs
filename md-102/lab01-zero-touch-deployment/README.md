@@ -19,7 +19,7 @@ This lab builds that end-to-end on a physical device.
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[New device<br/>powered on] --> B[OOBE: user signs in<br/>with work account]
     B --> C{Autopilot<br/>profile found?}
     C -- Yes --> D[Entra ID join +<br/>Intune enrollment]
