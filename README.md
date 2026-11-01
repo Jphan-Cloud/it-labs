@@ -1,0 +1,49 @@
+# IT Labs
+
+Hands-on labs covering Microsoft endpoint management, Azure administration, and Linux self-hosting. Each lab is built on real hardware or a live tenant and documents the business scenario, configuration, verification, and the issues hit along the way.
+
+**John Phan** · Allen, TX · 10+ years technical experience, 7+ in enterprise IT
+
+---
+
+## Labs
+
+### 🖥️ MD-102 – Endpoint Administrator
+
+| # | Lab | Technologies | Status |
+|---|-----|--------------|--------|
+| 01 | [Zero-Touch Windows Deployment](md-102/lab01-zero-touch-deployment/) | Autopilot, Intune, Entra ID, BitLocker, Windows LAPS, Conditional Access | 🟡 In progress |
+
+### ☁️ AZ-104 – Azure Administrator
+
+| # | Lab | Technologies | Status |
+|---|-----|--------------|--------|
+| | *Coming soon* | | |
+
+### 🏠 Homelab
+
+| # | Project | Technologies | Status |
+|---|---------|--------------|--------|
+| | *Coming soon* | Debian, Docker | |
+
+---
+
+## Repo Layout
+
+```text
+it-labs/
+├── md-102/      Intune, Autopilot, endpoint security
+├── az-104/      Azure identity, governance, storage, compute, networking
+├── homelab/     Self-hosted Linux and Docker infrastructure
+└── practice/    Reusable PowerShell and Bash scripts
+```
+
+## Certifications
+
+| Cert | Status |
+|------|--------|
+| AZ-900 Azure Fundamentals | ✅ Passed |
+| MD-102 Endpoint Administrator | 📘 In progress |
+| AZ-104 Azure Administrator | 📘 In progress |
+
+> All tenant names, serial numbers, and personal identifiers are redacted. No credentials or secrets are stored in this repo.
