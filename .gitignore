@@ -1,0 +1,28 @@
+# Intune packaging output
+*.intunewin
+**/output/
+**/source/*.msi
+**/source/*.exe
+
+# Autopilot hardware hash exports (contain device identifiers)
+*AutopilotHWID*.csv
+*hwid*.csv
+
+# Secrets and local config
+*.pfx
+*.pem
+*.key
+.env
+*secret*
+*credential*
+
+# Private notes (interview prep, scratch)
+NOTES-PRIVATE.md
+private/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.swp
