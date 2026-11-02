@@ -77,12 +77,10 @@ Data disks are mounted by UUID in `/etc/fstab` so device names can change withou
 
 ## Roadmap
 
-- [ ] VLAN segmentation for wireless and IoT devices
+- [x] VLAN segmentation for wireless and IoT devices
 - [ ] Replace the DAS with a 3D-printed hot-swap drive bay
 - [ ] UPS backup power
 - [ ] Off-server backup target for Immich data
-
----
 
 ## Skills Demonstrated
 
@@ -90,6 +88,6 @@ Data disks are mounted by UUID in `/etc/fstab` so device names can change withou
 - Docker container deployment and management
 - systemd service ordering and dependencies
 - Disk management, `/etc/fstab`, and UUID-based mounts
-- VLAN-capable managed switching and PoE planning
+- VLAN segmentation (wireless and IoT isolation) on Omada managed switches, plus PoE planning
 - Monitoring, alerting, and routine health checks
 - Secure remote access without port forwarding
