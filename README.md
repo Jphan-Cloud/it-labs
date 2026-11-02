@@ -35,8 +35,7 @@ it-labs/
 
 | Cert | Status |
 |------|--------|
-| AZ-900 Azure Fundamentals | ✅ Passed |
 | MD-102 Endpoint Administrator | 📘 In progress |
-| AZ-104 Azure Administrator | 📘 In progress |
+| Sc-300 Identity and Access Administrator | 📘 In progress |
 
 > All tenant names, serial numbers, and personal identifiers are redacted. No credentials or secrets are stored in this repo.
