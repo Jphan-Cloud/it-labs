@@ -1,6 +1,6 @@
 # IT Labs
 
-Hands-on labs covering Microsoft endpoint management, Azure administration, and Linux self-hosting. Each lab is built on real hardware or a live tenant and documents the business scenario, configuration, verification, and the issues hit along the way.
+Hands-on labs covering Microsoft endpoint management and Linux self-hosting. Each lab is built on real hardware or a live tenant and documents the business scenario, configuration, verification, and the issues hit along the way.
 
 **John Phan** · Allen, TX · 10+ years technical experience, 7+ in enterprise IT
 
@@ -14,17 +14,11 @@ Hands-on labs covering Microsoft endpoint management, Azure administration, and 
 |---|-----|--------------|--------|
 | 01 | [Zero-Touch Windows Deployment](md-102/lab01-zero-touch-deployment/) | Autopilot, Intune, Entra ID, BitLocker, Windows LAPS, Conditional Access | 🟡 In progress |
 
-### ☁️ AZ-104 – Azure Administrator
-
-| # | Lab | Technologies | Status |
-|---|-----|--------------|--------|
-| | *Coming soon* | | |
-
 ### 🏠 Homelab
 
 | # | Project | Technologies | Status |
 |---|---------|--------------|--------|
-| | *Coming soon* | Debian, Docker | |
+| 01 | [Debian Docker Server](homelab/) | Debian, Docker, Frigate, Home Assistant, systemd | 🟢 In production |
 
 ---
 
@@ -33,9 +27,8 @@ Hands-on labs covering Microsoft endpoint management, Azure administration, and 
 ```text
 it-labs/
 ├── md-102/      Intune, Autopilot, endpoint security
-├── az-104/      Azure identity, governance, storage, compute, networking
 ├── homelab/     Self-hosted Linux and Docker infrastructure
-└── practice/    Reusable PowerShell and Bash scripts
+└── practice/    Reusable PowerShell scripts
 ```
 
 ## Certifications
