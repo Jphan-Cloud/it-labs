@@ -36,6 +36,6 @@ it-labs/
 | Cert | Status |
 |------|--------|
 | MD-102 Endpoint Administrator | 📘 In progress |
-| Sc-300 Identity and Access Administrator | 📘 In progress |
+| SC-300 Identity and Access Administrator | 📘 In progress |
 
 > All tenant names, serial numbers, and personal identifiers are redacted. No credentials or secrets are stored in this repo.
