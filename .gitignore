@@ -7,6 +7,8 @@
 # Autopilot hardware hash exports (contain device identifiers)
 *AutopilotHWID*.csv
 *hwid*.csv
+W11-LAB-*.csv
+**/screenshots/*.csv
 
 # Secrets and local config
 *.pfx

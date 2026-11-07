@@ -78,6 +78,18 @@ Two identical VMs were built two different ways: once in the GUI to learn every 
 | Checkpoints | Automatic checkpoints **off** |
 | Automatic Start Action | Nothing |
 
+![New Virtual Machine Wizard summary](screenshots/00a-wizard-summary.png)
+*Wizard summary: Generation 2, 4096 MB, Default Switch, VHDX under `C:\Hyper-V`. Dynamic Memory was turned off after creation.*
+
+![Secure Boot and virtual TPM enabled](screenshots/00b-secure-boot-tpm.png)
+*Security: Secure Boot (Microsoft Windows template) and Trusted Platform Module enabled*
+
+![Automatic checkpoints disabled](screenshots/00c-checkpoints.png)
+*Checkpoints: standard checkpoints, automatic checkpoints off*
+
+![ISO moved to C:\ISO and attached to the DVD drive](screenshots/00d-iso-attached.png)
+*ISO moved out of Downloads to `C:\ISO\Win11-Ent-Eval.iso` and the DVD drive repointed to it*
+
 **W11-LAB-02 – PowerShell**
 
 ```powershell
@@ -119,8 +131,8 @@ Get-VMSnapshot -VMName W11-LAB-0*
 
 > `Clean-OOBE` is the virtual equivalent of a new laptop out of the box. Any test can be rolled back to a factory-fresh state in seconds instead of reinstalling Windows.
 
-📸 *Screenshot: verification table showing both VMs configured identically*
-📸 *Screenshot: `Get-VMSnapshot` showing `Clean-OOBE` on both VMs*
+![Both VMs configured identically, with Clean-OOBE checkpoints](screenshots/00e-vm-verification.png)
+*Both VMs match (Gen 2, 2 vCPU, 4 GB static, automatic checkpoints off), and both have a `Clean-OOBE` checkpoint*
 
 ### Phase 1 – Tenant Preparation
 
@@ -191,7 +203,11 @@ The same steps were repeated for `W11-LAB-01`. Both VMs were then rolled back to
 
 > Hardware hash CSVs are excluded from the repo by `.gitignore`, and serial numbers are blurred in all screenshots. Both uniquely identify a device.
 
-📸 *Screenshots: Shift+F10 at OOBE · "Gathered details for device" output (serial blurred) · read-only VHD mount on host · both CSVs on host · rollback to `Clean-OOBE`*
+![Hash captured to CSV on W11-LAB-01 and verified with Get-ChildItem](screenshots/03a-hash-capture-csv.png)
+*W11-LAB-01: hash captured to CSV and verified (serial redacted)*
+
+![Typo error, then successful capture on W11-LAB-02](screenshots/03b-hash-capture-typo-error.png)
+*W11-LAB-02: the `Get-WindowAutopilotInfo` typo from [Issue #4](#issues--fixes), then the corrected command (serial redacted)*
 
 #### 3c – Import into Autopilot
 
@@ -354,6 +370,7 @@ A verification script that checks most of these from the device is in [`../../pr
 | 4 | `No match was found for the specified search criteria` | Typo: `Get-WindowAutopilotInfo` (missing the "s") | Corrected to `Get-WindowsAutopilotInfo` |
 | 5 | No way to copy the CSV from the VM to the host | At OOBE there's no signed-in user, so Hyper-V enhanced session (clipboard/file copy) isn't available | Shut down the VM, mounted its VHDX **read-only** on the host with `Mount-VHD`, copied the CSV, then dismounted |
 | 6 | `'Test-Path' is not recognized` when verifying the rollback | Shift+F10 opens **cmd**, and `Test-Path` is a PowerShell cmdlet | Ran `dir C:\HWID` in cmd (*File Not Found* = rollback confirmed), or typed `powershell` first |
+| 7 | `Get-VM : You do not have the required permission to complete this task` | PowerShell on the host wasn't elevated (prompt opened in `C:\Users\<user>`, not `C:\WINDOWS\system32`) | Reopened PowerShell with **Run as administrator**. Hyper-V cmdlets need admin rights or membership in the Hyper-V Administrators group |
 
 <details>
 <summary>Common issues reference</summary>
