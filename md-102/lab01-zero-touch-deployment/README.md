@@ -134,7 +134,9 @@ Get-VMSnapshot -VMName W11-LAB-0*
 ![Both VMs configured identically, with Clean-OOBE checkpoints](screenshots/00e-vm-verification.png)
 *Both VMs match (Gen 2, 2 vCPU, 4 GB static, automatic checkpoints off), and both have a `Clean-OOBE` checkpoint*
 
-### Phase 1 – Tenant Preparation
+### Phase 1 – Tenant Preparation ✅
+
+A Microsoft 365 Business Premium trial was created as a dedicated lab tenant (1-month term, 5 seats, recurring billing set to **cancel on expiration** immediately after signup).
 
 | Step | Where | Configuration |
 |------|-------|---------------|
@@ -143,9 +145,60 @@ Get-VMSnapshot -VMName W11-LAB-0*
 | 1.3 | Entra → Properties → Security defaults | **Disable** security defaults (required before Conditional Access can be used) |
 | 1.4 | Intune → Devices → Enrollment → Windows → Automatic Enrollment | Set **MDM user scope** to *All* (or a pilot group) |
 | 1.5 | Entra → Devices → Device settings | Confirm users may join devices to Entra ID, and enable **Microsoft Entra Local Administrator Password Solution (LAPS)** |
-| 1.6 | Intune → Tenant administration → Customization | Add company name, logo, and support contact (shown during OOBE) |
+| 1.6 | Intune → Tenant administration → Customization | Add company name and support contact (shown in Company Portal and during enrollment) |
 
-📸 *Screenshot: Automatic Enrollment MDM user scope*
+#### 1.1 – Test users and licenses
+
+| Account | License | Role | Notes |
+|---------|---------|------|-------|
+| `lab.user1` | Business Premium | – | Autopilot test user |
+| `lab.user2` | Business Premium | – | Second test user |
+| `breakglass-admin` | **None** | Global Administrator | Emergency access only |
+
+Each account had **Usage location = United States** set on creation. A license can't be assigned to a user without a usage location.
+
+![Four accounts in Entra ID](screenshots/01a-users-created.png)
+*Entra ID → All users: the admin account, two test users, and the break-glass account*
+
+![License assignments in the Microsoft 365 admin center](screenshots/01c-license-assigned.png)
+*Both test users licensed for Business Premium (includes Intune + Entra ID P1). The break-glass account is intentionally unlicensed.*
+
+> License assignment has moved out of the Entra admin center. The user **Licenses** blade is now read-only, and assignments are made in the **Microsoft 365 admin center** (see [Issue #8](#issues--fixes)).
+
+#### 1.2 – Break-glass account
+
+![Break-glass account with Global Administrator](screenshots/01b-breakglass-role.png)
+*Global Administrator assigned **directly** and **permanently active**, not through PIM. An emergency access account has to work even when PIM, MFA, or Conditional Access is broken. It uses a 20+ character password stored offline and will be excluded from every CA policy in Phase 9.*
+
+#### 1.3 – Disable security defaults
+
+📸 *Screenshot pending: security defaults disabled*
+
+*Reason selected: "My organization is planning to use Conditional Access." The option to auto-create Microsoft's replacement CA policies was **unchecked**, so the only CA policy in the tenant is the one designed in Phase 9 (with the break-glass exclusion).*
+
+> Security defaults and Conditional Access are mutually exclusive. Until Phase 9 the test users have no MFA requirement, which is acceptable in an isolated lab. The admin account has Microsoft Authenticator registered, and Microsoft separately enforces MFA for admin portals.
+
+#### 1.4 – MDM user scope
+
+📸 *Screenshot pending: Automatic Enrollment MDM user scope*
+
+*MDM user scope **All**, and "Disable MDM enrollment when adding work or school account" left **No**. WIP (formerly MAM) user scope is **None**: Windows Information Protection is retired, and for Entra-joined devices MDM takes precedence anyway.*
+
+> If a user isn't in the MDM user scope, Autopilot fails at enrollment with error **80180018**.
+
+#### 1.5 – Device join settings and LAPS
+
+![Entra device settings with LAPS enabled](screenshots/01f-device-settings-laps.png)
+*Users may join devices: **All**. LAPS: **Yes**. "Require MFA to join" is left **No** because MFA will be enforced through Conditional Access instead.*
+
+> This toggle is the tenant-level switch for Windows LAPS. Without it, the Intune LAPS policy in Phase 6 applies but passwords are never backed up to Entra ID.
+>
+> "Registering user is added as local administrator" shows **All**, but the Autopilot profile in Phase 4 sets **User account type: Standard**, which overrides it for Autopilot devices.
+
+#### 1.6 – Company branding
+
+![Intune customization policy](screenshots/01g-company-branding.png)
+*Default customization policy: organization name, IT support contact, and privacy statement URL (required). Customization policies can target **user** groups only, never device groups.*
 
 ### Phase 2 – Dynamic Device Group
 
@@ -371,6 +424,9 @@ A verification script that checks most of these from the device is in [`../../pr
 | 5 | No way to copy the CSV from the VM to the host | At OOBE there's no signed-in user, so Hyper-V enhanced session (clipboard/file copy) isn't available | Shut down the VM, mounted its VHDX **read-only** on the host with `Mount-VHD`, copied the CSV, then dismounted |
 | 6 | `'Test-Path' is not recognized` when verifying the rollback | Shift+F10 opens **cmd**, and `Test-Path` is a PowerShell cmdlet | Ran `dir C:\HWID` in cmd (*File Not Found* = rollback confirmed), or typed `powershell` first |
 | 7 | `Get-VM : You do not have the required permission to complete this task` | PowerShell on the host wasn't elevated (prompt opened in `C:\Users\<user>`, not `C:\WINDOWS\system32`) | Reopened PowerShell with **Run as administrator**. Hyper-V cmdlets need admin rights or membership in the Hyper-V Administrators group |
+| 8 | Entra user **Licenses** blade showed "No license assignments found" with no way to add one | Microsoft moved license assignment to the Microsoft 365 admin center; the Entra blade is now view-only | Assigned licenses from **M365 admin center → Billing → Licenses → Assign licenses** |
+| 9 | After a two-user license assignment, `lab.user2` still showed **Unlicensed** | Bulk assignment hadn't finished processing for the second user | Refreshed and verified in **Active users**. Lesson: confirm every account after a bulk change, not just the first one |
+| 10 | Company branding values didn't appear after editing | Clicked **Review + save** but left before clicking **Save** on the review page | Re-entered the values and completed both steps. The **Privacy statement URL** field is also required before saving |
 
 <details>
 <summary>Common issues reference</summary>

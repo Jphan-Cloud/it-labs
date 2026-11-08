@@ -38,4 +38,4 @@ it-labs/
 | MD-102 Endpoint Administrator | 📘 In progress |
 | SC-300 Identity and Access Administrator | 📘 In progress |
 
-> All tenant names, serial numbers, and personal identifiers are redacted. No credentials or secrets are stored in this repo.
+> Serial numbers, tenant and object IDs, and personal contact details are redacted. Lab tenants are short-lived trial tenants created only for these labs. No credentials or secrets are stored in this repo.
