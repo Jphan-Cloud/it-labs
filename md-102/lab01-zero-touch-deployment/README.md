@@ -172,19 +172,17 @@ Each account had **Usage location = United States** set on creation. A license c
 
 #### 1.3 – Disable security defaults
 
-📸 *Screenshot pending: security defaults disabled*
-
+![Security defaults disabled](screenshots/01d-security-defaults-off.png)
 *Reason selected: "My organization is planning to use Conditional Access." The option to auto-create Microsoft's replacement CA policies was **unchecked**, so the only CA policy in the tenant is the one designed in Phase 9 (with the break-glass exclusion).*
 
 > Security defaults and Conditional Access are mutually exclusive. Until Phase 9 the test users have no MFA requirement, which is acceptable in an isolated lab. The admin account has Microsoft Authenticator registered, and Microsoft separately enforces MFA for admin portals.
 
 #### 1.4 – MDM user scope
 
-📸 *Screenshot pending: Automatic Enrollment MDM user scope*
-
+![Automatic Enrollment with MDM user scope set to All](screenshots/01e-mdm-user-scope.png)
 *MDM user scope **All**, and "Disable MDM enrollment when adding work or school account" left **No**. WIP (formerly MAM) user scope is **None**: Windows Information Protection is retired, and for Entra-joined devices MDM takes precedence anyway.*
 
-> If a user isn't in the MDM user scope, Autopilot fails at enrollment with error **80180018**.
+> If a user isn't in the MDM user scope, Autopilot fails at enrollment with error **80180018**. This setting was found reverted to **None** during a later check and corrected before any deployment (see [Issue #11](#issues--fixes)).
 
 #### 1.5 – Device join settings and LAPS
 
@@ -427,6 +425,7 @@ A verification script that checks most of these from the device is in [`../../pr
 | 8 | Entra user **Licenses** blade showed "No license assignments found" with no way to add one | Microsoft moved license assignment to the Microsoft 365 admin center; the Entra blade is now view-only | Assigned licenses from **M365 admin center → Billing → Licenses → Assign licenses** |
 | 9 | After a two-user license assignment, `lab.user2` still showed **Unlicensed** | Bulk assignment hadn't finished processing for the second user | Refreshed and verified in **Active users**. Lesson: confirm every account after a bulk change, not just the first one |
 | 10 | Company branding values didn't appear after editing | Clicked **Review + save** but left before clicking **Save** on the review page | Re-entered the values and completed both steps. The **Privacy statement URL** field is also required before saving |
+| 11 | During a screenshot recheck, Automatic Enrollment showed **MDM user scope: None** | The original change to *All* was never saved (Save button state wasn't confirmed) | Set *All*, saved, reloaded the page to confirm it stuck. Caught before Phase 4, where it would have caused enrollment error 80180018. Lesson: after saving a portal setting, reload and verify |
 
 <details>
 <summary>Common issues reference</summary>
