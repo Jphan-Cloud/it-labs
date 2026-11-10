@@ -198,7 +198,7 @@ Each account had **Usage location = United States** set on creation. A license c
 ![Intune customization policy](screenshots/01g-company-branding.png)
 *Default customization policy: organization name, IT support contact, and privacy statement URL (required). Customization policies can target **user** groups only, never device groups.*
 
-### Phase 2 – Dynamic Device Group
+### Phase 2 – Dynamic Device Group ✅
 
 Create a group that automatically contains every Autopilot-registered device.
 
@@ -213,7 +213,15 @@ Create a group that automatically contains every Autopilot-registered device.
 
 > `ZTDId` is the tag Autopilot stamps on every registered device. Any device imported into Autopilot joins this group automatically, so all profiles and policies target it without manual assignment.
 
-📸 *Screenshot: dynamic membership rule*
+> The rule builder can display this rule (Property `devicePhysicalIds`, Operator `Any`), but the value is an expression, so it was pasted into the **Rule syntax** box.
+
+![Dynamic membership rule for SG-Autopilot-Devices](screenshots/02a-dynamic-rule.png)
+*Dynamic membership rule entered in the Rule syntax box; the builder parsed it as `devicePhysicalIds` / `Any`*
+
+![SG-Autopilot-Devices group overview](screenshots/02b-group-overview.png)
+*Dynamic security group created with rule processing **Succeeded**. 0 members until devices are imported into Autopilot in 3c.*
+
+> The group was created in the Entra admin center after resolving an AADSTS50020 sign-in error (see [Issue #12](#issues--fixes)).
 
 ### Phase 3 – Capture the Hardware Hash and Register in Autopilot
 
@@ -260,7 +268,7 @@ The same steps were repeated for `W11-LAB-01`. Both VMs were then rolled back to
 ![Typo error, then successful capture on W11-LAB-02](screenshots/03b-hash-capture-typo-error.png)
 *W11-LAB-02: the `Get-WindowAutopilotInfo` typo from [Issue #4](#issues--fixes), then the corrected command (serial redacted)*
 
-#### 3c – Import into Autopilot
+#### 3c – Import into Autopilot ✅
 
 **Intune → Devices → Enrollment → Windows → Devices (Autopilot) → Import** → select the CSV. The devices should appear within ~15 minutes and join `SG-Autopilot-Devices` automatically.
 
@@ -268,7 +276,16 @@ The same steps were repeated for `W11-LAB-01`. Both VMs were then rolled back to
 
 > **Note:** Windows Autopilot *device preparation* is a newer option that skips hardware hash registration. This lab uses classic user-driven Autopilot because it remains heavily tested on MD-102 and is still the standard in most enterprises.
 
-📸 *Screenshot: devices listed in Autopilot devices (serials blurred)*
+Each CSV was imported separately. Intune accepts one file per import and disables **Import** until the current one finishes (the banner allows up to 15 minutes; each took only a few).
+
+![Empty Autopilot devices list before import](screenshots/03c-autopilot-empty.png)
+*Before: no Autopilot devices and the tenant has never synced*
+
+![Both VMs registered in Windows Autopilot](screenshots/03d-autopilot-devices.png)
+*After: both hashes imported. Hyper-V VMs report as Microsoft Corporation / Virtual Machine. Profile status is **Not assigned** until the deployment profile is created in Phase 4 (serials redacted).*
+
+![Both Autopilot devices in SG-Autopilot-Devices](screenshots/03e-group-members.png)
+*Both devices joined the dynamic group automatically within minutes of import, confirming the `[ZTDId]` rule works. Device objects are named by serial until enrollment (serials redacted).*
 
 ### Phase 4 – Autopilot Deployment Profile
 
@@ -426,6 +443,7 @@ A verification script that checks most of these from the device is in [`../../pr
 | 9 | After a two-user license assignment, `lab.user2` still showed **Unlicensed** | Bulk assignment hadn't finished processing for the second user | Refreshed and verified in **Active users**. Lesson: confirm every account after a bulk change, not just the first one |
 | 10 | Company branding values didn't appear after editing | Clicked **Review + save** but left before clicking **Save** on the review page | Re-entered the values and completed both steps. The **Privacy statement URL** field is also required before saving |
 | 11 | During a screenshot recheck, Automatic Enrollment showed **MDM user scope: None** | The original change to *All* was never saved (Save button state wasn't confirmed) | Set *All*, saved, reloaded the page to confirm it stuck. Caught before Phase 4, where it would have caused enrollment error 80180018. Lesson: after saving a portal setting, reload and verify |
+| 12 | `AADSTS50020` when opening the Entra admin center: first for a personal `live.com` account, then for the tenant admin against tenant **"Microsoft Services"** | The browser reused a cached personal Microsoft account session, which routes to Microsoft's "Microsoft Services" tenant. Switching accounts mid-flow kept that tenant (the same Correlation ID appeared on both errors). Intune still worked because it started a fresh sign-in | Opened the tenant-specific URL `entra.microsoft.com/JphanLabs.onmicrosoft.com`, which forces the correct tenant, and bookmarked it. Lesson: keep lab admin sessions in a separate browser profile |
 
 <details>
 <summary>Common issues reference</summary>
