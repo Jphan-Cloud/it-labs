@@ -339,27 +339,63 @@ Profile name: `ESP_Lab01` (the name field rejects hyphens, same as Issue #13).
 ![ESP list showing ESP_Lab01 at priority 1](screenshots/05b-esp-assigned.png)
 *`ESP_Lab01` is **Priority 1** and assigned, so it takes precedence over the **Default** profile (All users and all devices).*
 
-### Phase 6 – Security Configuration
+### Phase 6 – Security Configuration ✅
 
-**BitLocker:** Endpoint security → Disk encryption → Create policy → Windows → BitLocker
+Both policies are assigned to `SG-Autopilot-Devices`. Policy names use underscores because Intune name fields reject hyphens (see [Issue #13](#issues--fixes)).
 
-| Setting | Value |
-|---------|-------|
-| Require device encryption | Enabled |
-| Allow warning for other disk encryption | Disabled (enables silent encryption) |
-| Allow standard user encryption | Enabled |
-| OS drive recovery: save recovery info to Entra ID | Enabled, and require backup before encryption |
+#### 6.1 – BitLocker (`BitLocker_Lab01`)
 
-**Windows LAPS:** Endpoint security → Account protection → Create policy → Local admin password solution
+**Endpoint security → Disk encryption → Create policy → Windows → BitLocker**
 
-| Setting | Value |
-|---------|-------|
-| Backup directory | Backup to Microsoft Entra ID only |
-| Password age (days) | 30 |
-| Password complexity | Large + small letters + numbers + special characters |
-| Post-authentication actions | Reset password and log off |
+| Section | Setting | Value | Why |
+|---------|---------|-------|-----|
+| BitLocker | Require Device Encryption | Enabled | Turns encryption on |
+| BitLocker | Allow Warning For Other Disk Encryption | Disabled | Required for silent encryption |
+| BitLocker | Allow Standard User Encryption | Enabled | Autopilot users are standard users |
+| BitLocker | Configure Recovery Password Rotation | Refresh on for Entra ID-joined devices | New key after the old one is used |
+| Drive Encryption | Cipher strength | Enabled, **XTS-AES 256-bit** for OS and fixed drives | Stronger cipher; removable left at AES-CBC 128-bit default |
+| OS Drives | Require additional authentication at startup | Enabled | Lets TPM-only protection run silently |
+| OS Drives | Allow BitLocker without a compatible TPM | **False** | Prevents a password or USB-key prompt |
+| OS Drives | TPM startup | Allow TPM | |
+| OS Drives | TPM startup key / PIN / key and PIN | **Do not allow** (all three) | No user interaction at startup |
+| OS Drives | Recovery options | Enabled | |
+| OS Drives | Allow data recovery agent | False | Legacy domain method, not used |
+| OS Drives | 48-digit recovery password / 256-bit recovery key | Allow / Do not allow | |
+| OS Drives | Omit recovery options from the setup wizard | True | User is never asked to save a key |
+| OS Drives | Save recovery information to AD DS (Entra ID) | True | Key is escrowed to Entra ID on Entra-joined devices |
+| OS Drives | Do not enable BitLocker until recovery information is stored | **True** | No drive is encrypted without a backed-up key |
+| Fixed and Removable Data Drives | All 5 settings | Not configured | The VMs have only an OS drive |
 
-📸 *Screenshot: both policies assigned to `SG-Autopilot-Devices`*
+> The setting names still say "AD DS" because Microsoft kept the legacy Group Policy wording. On Entra-joined devices the same settings escrow the recovery key to Entra ID. Silent encryption needs three things together: **Allow Warning For Other Disk Encryption = Disabled**, **TPM-only startup** with every PIN and key option set to *Do not allow*, and **Allow Standard User Encryption = Enabled**.
+
+![BitLocker policy summary](screenshots/06a-bitlocker-summary.png)
+*Review + create: 22 settings, XTS-AES 256-bit, TPM-only startup, recovery key escrow required before encryption.*
+
+![BitLocker policy assignment](screenshots/06a2-bitlocker-assignments.png)
+*Assigned to `SG-Autopilot-Devices` (Include, Active).*
+
+#### 6.2 – Windows LAPS (`LAPS_Lab01`)
+
+**Endpoint security → Account protection → Create policy → Windows → Local admin password solution (Windows LAPS)**
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Backup Directory | Backup the password to Microsoft Entra ID only | Entra-joined, no on-prem AD |
+| Password Age Days | 30 | Rotates monthly |
+| Password Complexity | Large + small letters + numbers + special characters | |
+| Post Authentication Actions | Reset the password and logoff the managed account | Password rotates after it has been used |
+| Administrator Account Name, Password Length, Reset Delay, Automatic Account Management | Not configured | Defaults are fine for this lab |
+
+> The tenant-level LAPS switch was turned on in Phase 1.5. Without it, this policy applies but passwords are never backed up to Entra ID.
+
+![LAPS policy summary](screenshots/06b-laps-summary.png)
+*Review + create: backup to Entra ID only, 30-day password age, full complexity, reset and log off after use, assigned to `SG-Autopilot-Devices`.*
+
+![BitLocker policy in the Disk encryption list](screenshots/06c1-bitlocker-assigned.png)
+*`BitLocker_Lab01` created: Assigned **Yes**, platform Windows, target MDM.*
+
+![LAPS policy in the Account protection list](screenshots/06c2-laps-assigned.png)
+*`LAPS_Lab01` created: Assigned **Yes**, platform Windows, target MDM.*
 
 ### Phase 7 – Applications
 
