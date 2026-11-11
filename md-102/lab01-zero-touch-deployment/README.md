@@ -287,7 +287,7 @@ Each CSV was imported separately. Intune accepts one file per import and disable
 ![Both Autopilot devices in SG-Autopilot-Devices](screenshots/03e-group-members.png)
 *Both devices joined the dynamic group automatically within minutes of import, confirming the `[ZTDId]` rule works. Device objects are named by serial until enrollment (serials redacted).*
 
-### Phase 4 – Autopilot Deployment Profile
+### Phase 4 – Autopilot Deployment Profile ✅
 
 **Intune → Devices → Enrollment → Windows → Deployment profiles → Create profile (Windows PC)**
 
@@ -300,10 +300,16 @@ Each CSV was imported separately. Intune accepts one file per import and disable
 | Privacy settings | Hide | Defaults applied by policy |
 | Hide change account options | Hide | Prevents personal-account setup |
 | User account type | **Standard** | User does not get local admin |
-| Apply device name template | Yes → `LAB-%SERIAL%` | Consistent naming (15-character max) |
+| Apply device name template | Yes → `LAB_%SERIAL%` | Consistent naming (15-character max; `%SERIAL%` is truncated to fit) |
 | Assignment | `SG-Autopilot-Devices` | |
 
-📸 *Screenshot: profile summary and "Assigned" profile status on the device*
+> The profile name is `AP_UserDriven_EntraJoin`. The name field rejects hyphens (see [Issue #13](#issues--fixes)).
+
+![Autopilot deployment profile summary](screenshots/04a-profile-summary.png)
+*Review + create summary: user-driven, Microsoft Entra joined, standard user account, OOBE screens hidden, assigned to `SG-Autopilot-Devices`.*
+
+![Both Autopilot devices showing Assigned](screenshots/04b-profile-assigned.png)
+*After a Sync and a few refreshes, both devices changed from **Not assigned** to **Assigned**, confirming the dynamic group delivered the profile (serials redacted).*
 
 ### Phase 5 – Enrollment Status Page
 
@@ -444,6 +450,7 @@ A verification script that checks most of these from the device is in [`../../pr
 | 10 | Company branding values didn't appear after editing | Clicked **Review + save** but left before clicking **Save** on the review page | Re-entered the values and completed both steps. The **Privacy statement URL** field is also required before saving |
 | 11 | During a screenshot recheck, Automatic Enrollment showed **MDM user scope: None** | The original change to *All* was never saved (Save button state wasn't confirmed) | Set *All*, saved, reloaded the page to confirm it stuck. Caught before Phase 4, where it would have caused enrollment error 80180018. Lesson: after saving a portal setting, reload and verify |
 | 12 | `AADSTS50020` when opening the Entra admin center: first for a personal `live.com` account, then for the tenant admin against tenant **"Microsoft Services"** | The browser reused a cached personal Microsoft account session, which routes to Microsoft's "Microsoft Services" tenant. Switching accounts mid-flow kept that tenant (the same Correlation ID appeared on both errors). Intune still worked because it started a fresh sign-in | Opened the tenant-specific URL `entra.microsoft.com/JphanLabs.onmicrosoft.com`, which forces the correct tenant, and bookmarked it. Lesson: keep lab admin sessions in a separate browser profile |
+| 13 | Creating the Autopilot deployment profile failed validation with **Character "-" is not allowed** on the Name field | The profile name field rejects hyphens | Renamed the profile from `AP-UserDriven-EntraJoin` to `AP_UserDriven_EntraJoin`. Lesson: when a portal rejects a name, check the character rules before retrying |
 
 <details>
 <summary>Common issues reference</summary>
