@@ -311,17 +311,33 @@ Each CSV was imported separately. Intune accepts one file per import and disable
 ![Both Autopilot devices showing Assigned](screenshots/04b-profile-assigned.png)
 *After a Sync and a few refreshes, both devices changed from **Not assigned** to **Assigned**, confirming the dynamic group delivered the profile (serials redacted).*
 
-### Phase 5 – Enrollment Status Page
+### Phase 5 – Enrollment Status Page ✅
 
 **Intune → Devices → Enrollment → Windows → Enrollment Status Page → Create**
 
-| Setting | Value |
-|---------|-------|
-| Show app and profile configuration progress | Yes |
-| Show error when installation takes longer than | 60 minutes |
-| Block device use until all apps and profiles are installed | Yes → selected apps only |
-| Required apps | Microsoft 365 Apps, 7-Zip (Win32) |
-| Assignment | `SG-Autopilot-Devices` |
+Profile name: `ESP_Lab01` (the name field rejects hyphens, same as Issue #13).
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Show app and profile configuration progress | Yes | User sees what is installing |
+| Show an error when installation takes longer than | 60 minutes | Fails visibly instead of hanging |
+| Show custom message on error | No | Default message is enough |
+| Turn on log collection and diagnostics page | Yes | Lets users collect logs for troubleshooting |
+| Only show page to devices provisioned by OOBE | Yes | ESP applies to Autopilot, not existing devices |
+| Install Windows updates | **No** | Avoids long downloads and extra reboots in the lab |
+| Block device use until all apps and profiles are installed | Yes | Device isn't usable until configured |
+| Allow users to reset device on error | No | |
+| Allow users to use device on error | **No** | If Yes, a failed install lets the user skip the ESP, which defeats the block setting |
+| Block device use until required apps are installed | All | Switch to *Selected* after Phase 7 if only specific apps should block |
+| Assignment | `SG-Autopilot-Devices` | |
+
+> Windows updates was left on its default (Yes) at first and the "use device on error" toggle flipped to Yes while editing. Both were corrected before creating the profile. Block-until-installed only works when "allow use on error" is off.
+
+![ESP profile summary](screenshots/05a-esp-summary.png)
+*Review + create summary: progress shown, 60-minute timeout, updates off, block device use on, use-on-error off, assigned to `SG-Autopilot-Devices`.*
+
+![ESP list showing ESP_Lab01 at priority 1](screenshots/05b-esp-assigned.png)
+*`ESP_Lab01` is **Priority 1** and assigned, so it takes precedence over the **Default** profile (All users and all devices).*
 
 ### Phase 6 – Security Configuration
 
