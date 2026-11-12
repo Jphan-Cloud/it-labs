@@ -472,21 +472,42 @@ The Chrome Enterprise MSI was downloaded from Google and packaged on the admin P
 
 > `.intunewin` output files are excluded from the repo by `.gitignore`.
 
-### Phase 8 – Compliance Policy
+### Phase 8 – Compliance Policy ✅
 
-**Devices → Compliance → Create policy → Windows 10 and later**
+**Devices → Compliance → Create policy → Windows 10 and later → Windows 10/11 compliance policy** (not the *Templates* option). Policy name: `Compliance_Lab01`.
 
-| Category | Setting | Value |
-|----------|---------|-------|
-| Device Health | Require BitLocker | Require |
-| Device Health | Require Secure Boot | Require |
-| Device Properties | Minimum OS version | Current supported build |
-| System Security | Firewall | Require |
-| System Security | Microsoft Defender Antimalware | Require |
-| System Security | Real-time protection | Require |
-| Actions | Mark device noncompliant | Immediately (0 days) |
+| Category | Setting | Value | Why |
+|----------|---------|-------|-----|
+| Device Health | BitLocker | Require | Confirms the Phase 6 policy actually encrypted the drive |
+| Device Health | Secure Boot | Require | Boot-time integrity, matches the Gen 2 VM setup |
+| Device Properties | Minimum OS version | `10.0.22000.0` | First Windows 11 build, so the lab VMs pass; raised on purpose in the Conditional Access test |
+| System Security | Firewall | Require | |
+| System Security | Microsoft Defender Antimalware | Require | |
+| System Security | Real-time protection | Require | Unlocks after Defender Antimalware is set |
+| Actions | Mark device noncompliant | Immediately (0 days) | No grace period in the lab |
+| Assignment | `SG-Autopilot-Devices` | Included (2 devices) | |
 
-Assign to `SG-Autopilot-Devices`.
+Every other setting was left at **Not configured**: Custom compliance, code integrity, TPM, antivirus, antispyware, the mobile-style password settings, Configuration Manager, Defender for Endpoint, and WSL. The password settings apply to mobile devices, and the lab has no Defender for Endpoint or Configuration Manager.
+
+> The assignment was missed the first time. The Review + create page showed **Included groups: No results**, which would have created a policy that applied to nothing. It was caught on the summary and fixed before creating. Lesson: always read the Assignments section on the review page.
+
+![Compliance policy, Device Health](screenshots/08a-compliance-health.png)
+*Device Health: BitLocker and Secure Boot set to Require.*
+
+![Compliance policy, Device Properties](screenshots/08b-compliance-properties.png)
+*Minimum OS version `10.0.22000.0`.*
+
+![Compliance policy, System Security](screenshots/08c-compliance-security.png)
+*Firewall, Microsoft Defender Antimalware, and Real-time protection set to Require.*
+
+![Actions for noncompliance](screenshots/08e-compliance-actions.png)
+*Mark device noncompliant, immediately.*
+
+![Compliance policy summary](screenshots/08f-compliance-summary.png)
+*Review + create: all settings correct and `SG-Autopilot-Devices` assigned (2 devices).*
+
+![Compliance policy created](screenshots/08g-compliance-created.png)
+*`Compliance_Lab01` created. Device counts are 0 until a device enrolls and evaluates the policy.*
 
 ### Phase 9 – Conditional Access
 
