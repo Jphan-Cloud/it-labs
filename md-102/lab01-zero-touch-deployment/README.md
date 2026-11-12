@@ -397,24 +397,78 @@ Both policies are assigned to `SG-Autopilot-Devices`. Policy names use underscor
 ![LAPS policy in the Account protection list](screenshots/06c2-laps-assigned.png)
 *`LAPS_Lab01` created: Assigned **Yes**, platform Windows, target MDM.*
 
-### Phase 7 – Applications
+### Phase 7 – Applications ✅
 
-**Microsoft 365 Apps:** Apps → Windows → Add → Microsoft 365 Apps (Windows 10 and later). Required assignment.
+Two required apps, both assigned to `SG-Autopilot-Devices`: **Microsoft 365 Apps** (built-in Intune app type) and **Google Chrome Enterprise** (custom Win32 package, to demonstrate packaging and detection rules).
 
-**7-Zip as a Win32 app** (demonstrates custom packaging):
+#### 7.1 – Microsoft 365 Apps
+
+**Apps → Windows → Add → Microsoft 365 Apps (Windows 10 and later)**
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Apps | Excel, Outlook, PowerPoint, Word | Teams removed to keep the ESP install short |
+| Architecture | 64-bit | |
+| Default file format | Office Open XML Format | Standard .docx / .xlsx / .pptx |
+| Update channel | Current Channel | |
+| Remove other versions | Yes | Clears any pre-installed Office |
+| Version to install | Latest | |
+| Shared computer activation | No | Single-user devices |
+| Accept license terms on behalf of users | Yes | No prompt during Autopilot |
+| Microsoft Search in Bing background service | No | Not needed |
+| Assignment | Required → `SG-Autopilot-Devices` | |
+
+![Microsoft 365 Apps configuration](screenshots/07a-m365-config.png)
+*App suite settings: four apps, 64-bit, Current Channel, license accepted on behalf of users.*
+
+![Microsoft 365 Apps summary with assignment](screenshots/07a2-m365-summary.png)
+*Review + create: **Required → Included → SG-Autopilot-Devices**.*
+
+![Microsoft 365 Apps created](screenshots/07b-m365-created.png)
+*App created and assigned. Device and user counts are 0 until a device enrolls.*
+
+#### 7.2 – Google Chrome Enterprise as a Win32 app
+
+The Chrome Enterprise MSI was downloaded from Google and packaged on the admin PC with the Microsoft Win32 Content Prep Tool:
 
 ```powershell
 # Package the MSI with the Microsoft Win32 Content Prep Tool
-.\IntuneWinAppUtil.exe -c .\source -s 7z-x64.msi -o .\output
+.\IntuneWinAppUtil.exe -c .\source -s googlechromestandaloneenterprise64.msi -o .\output
 ```
 
-| Field | Value |
-|-------|-------|
-| Install command | `msiexec /i "7z-x64.msi" /qn` |
-| Uninstall command | `msiexec /x {ProductCode} /qn` |
-| Install behavior | System |
-| Detection rule | MSI product code (auto-detected) |
-| Assignment | Required → `SG-Autopilot-Devices` |
+![Packaging the MSI into an .intunewin file](screenshots/07c-intunewin-packaging.png)
+*Packaging output, cropped to remove local user paths. The result is a ~164 MB `.intunewin` file.*
+
+**Apps → Windows → Add → Windows app (Win32)** → upload the `.intunewin` file.
+
+| Tab | Setting | Value |
+|-----|---------|-------|
+| App information | Name / Publisher / Version | Google Chrome / Google / 157.0.8103.79 (read from the MSI) |
+| Program | Install command | `msiexec /i "googlechromestandaloneenterprise64.msi" /qn` |
+| Program | Uninstall command | `msiexec /x "{B3DB5E18-7FDA-3432-9931-2E60D41BD242}" /qn` (product code filled in by Intune) |
+| Program | Install behavior | System (set by the per-machine MSI) |
+| Program | Device restart behavior | **No specific action** (default was "may force a restart") |
+| Requirements | Architecture / minimum OS | x64 only / Windows 10 21H2 |
+| Detection rules | Rule type | MSI product code (added automatically) |
+| Assignments | Required | `SG-Autopilot-Devices` |
+
+> A forced restart in the middle of the Enrollment Status Page could break the Autopilot run, so restart behavior was changed from the default. Install behavior is greyed out because Intune sets it from the MSI, and the Chrome Enterprise MSI installs per machine, which is the **System** context Autopilot needs.
+
+![Chrome Program tab](screenshots/07d-chrome-program.png)
+*Install and uninstall commands, System context, no forced restart.*
+
+![Chrome Requirements tab](screenshots/07e-chrome-requirements.png)
+*x64 only, Windows 10 21H2 minimum.*
+
+![Chrome detection rule](screenshots/07f-chrome-detection.png)
+*MSI detection rule. The product code matches the uninstall command.*
+
+![Chrome summary, part 1](screenshots/07g-chrome-summary.png)
+![Chrome summary, part 2 with assignment](screenshots/07g2-chrome-summary.png)
+*Review + create: no dependencies or supersedence, **Required → Included → SG-Autopilot-Devices**.*
+
+![Google Chrome created](screenshots/07h-chrome-created.png)
+*App created and assigned.*
 
 > `.intunewin` output files are excluded from the repo by `.gitignore`.
 
@@ -465,7 +519,7 @@ Assign to `SG-Autopilot-Devices`.
 | Intune enrollment | Intune → Devices → Windows | Device listed as `LAB-<serial>`, user `lab.user1` |
 | Device name | Settings → System → About | Matches template |
 | Standard user | `net localgroup administrators` | `lab.user1` **not** listed |
-| Apps | Start menu | Microsoft 365 Apps + 7-Zip installed |
+| Apps | Start menu | Microsoft 365 Apps + Google Chrome installed |
 | BitLocker | `manage-bde -status C:` | Protection On, XTS-AES |
 | Recovery key escrow | Intune → device → Recovery keys | Key present |
 | LAPS | Intune → device → Local admin password | Password retrievable, rotation date shown |

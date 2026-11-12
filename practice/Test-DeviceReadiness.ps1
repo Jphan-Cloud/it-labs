@@ -93,7 +93,7 @@ $uninstallKeys = @(
     'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
 )
 $apps = Get-ItemProperty $uninstallKeys -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DisplayName -ErrorAction SilentlyContinue
-foreach ($app in @('Microsoft 365', '7-Zip')) {
+foreach ($app in @('Microsoft 365', 'Google Chrome')) {
     $found = $apps | Where-Object { $_ -like "*$app*" } | Select-Object -First 1
     Add-Result "App installed: $app" ([bool]$found) $(if ($found) { $found } else { 'Not found' })
 }
