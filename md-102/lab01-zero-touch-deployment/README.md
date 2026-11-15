@@ -562,23 +562,54 @@ Conditional Access targets **users**, not devices, so the device group from Phas
 ## Deployment & Verification
 
 1. In Hyper-V, apply the `Clean-OOBE` checkpoint to the VM so it boots like a brand-new device
-2. Start the VM, connect to the network, and sign in as `lab.user1`
-3. Watch the company branding and ESP progress screens
+2. **Eject the ISO from the VM's DVD drive** before signing in (see [Issue #15](#issues--fixes)): a bootable ISO left attached blocks silent BitLocker encryption
+3. Start the VM, connect to the network, and sign in as `lab.user1`
+4. Watch the ESP progress screens
 
-| Check | How | Expected result |
-|-------|-----|-----------------|
-| Entra join | `dsregcmd /status` | `AzureAdJoined : YES` |
-| Intune enrollment | Intune → Devices → Windows | Device listed as `LAB-<serial>`, user `lab.user1` |
-| Device name | Settings → System → About | Matches template |
-| Standard user | `net localgroup administrators` | `lab.user1` **not** listed |
-| Apps | Start menu | Microsoft 365 Apps + Google Chrome installed |
-| BitLocker | `manage-bde -status C:` | Protection On, XTS-AES |
-| Recovery key escrow | Intune → device → Recovery keys | Key present |
-| LAPS | Intune → device → Local admin password | Password retrievable, rotation date shown |
-| Compliance | Intune → device → Device compliance | **Compliant** |
-| CA (Report-only) | Entra → Sign-in logs → Report-only tab | "Report-only: Success" |
+```powershell
+# Run on the Hyper-V host (elevated). The plain form silently did nothing, so give the exact drive address
+Set-VMDvdDrive -VMName W11-LAB-01 -ControllerNumber 0 -ControllerLocation 1 -Path $null
+Get-VMDvdDrive -VMName W11-LAB-01    # DvdMediaType should read None
+```
 
-A verification script that checks most of these from the device is in [`../../practice/Test-DeviceReadiness.ps1`](../../practice/Test-DeviceReadiness.ps1).
+### Deployment Test – `W11-LAB-01` ✅
+
+`W11-LAB-01` was reset to `Clean-OOBE` and booted as a brand-new device. It reached the work-or-school sign-in with no manual enrollment, joined Entra ID, enrolled in Intune, and finished all three ESP stages with both required apps installed.
+
+![OOBE work or school sign-in](screenshots/10a-oobe-signin.png)
+*After the OOBE update check, Autopilot goes straight to the work-or-school sign-in. There is no personal-account option (Hide change account options is working).*
+
+![ESP, Device preparation steps](screenshots/10b-esp-progress.png)
+*ESP: Securing your hardware, Joining your organization's network, and Registering for mobile management all show Completed.*
+
+![ESP, Device setup in progress](screenshots/10b2-esp-device-setup.png)
+*Device setup: security policies applied, Apps 0 of 2 installed (Chrome and Microsoft 365 Apps).*
+
+![ESP complete](screenshots/10b3-esp-complete.png)
+*All three stages Completed: Device preparation, Device setup, Account setup.*
+
+#### Results
+
+| Check | How | Result |
+|-------|-----|--------|
+| Entra join | `dsregcmd /status` | `AzureAdJoined : YES`, `DomainJoined : NO` ([screenshot](screenshots/10c-dsregcmd.png)) |
+| Intune enrollment | Intune → Devices → Windows | Device listed, managed by Intune, primary user `lab.user1` |
+| Device name | `dsregcmd`, Intune | `LAB-` followed by the trailing digits of the serial, cut to 15 characters. Intune showed a placeholder name (`lab.user1_Windows_<date>`) until the first full check-in |
+| Standard user | `net localgroup administrators` | Only the built-in `Administrator`; `lab.user1` **not** listed ([screenshot](screenshots/10d-local-admins.png)) |
+| Apps | Start menu / desktop | Word, Excel, PowerPoint, Outlook pinned; Chrome on the desktop ([screenshot](screenshots/10f-apps-installed.png)). Intune Management Extension reports `EnforcementCompleted` |
+| Management link | Settings → Accounts → Access work or school | "Managed by Jphan Labs", **Disconnect** greyed out ([screenshot](screenshots/10n-work-account.png)) |
+| Policies delivered | Settings → Info page | BitLocker, Security, System policies present, sync successful ([screenshot](screenshots/10o-mdm-sync-info.png)) |
+| BitLocker | Control Panel → BitLocker Drive Encryption | **C: BitLocker on**, "some settings are managed by your system administrator" ([screenshot](screenshots/10e-bitlocker-status.png)). Cipher strength was **not** verified: `manage-bde` needs admin rights and the signed-in user is a standard user |
+| Recovery key escrow | Intune → device → Recovery keys | Key backed up 11/15/2026 1:54 PM, operating system drive ([screenshot](screenshots/10h-recovery-key.png)) |
+| LAPS | Intune → device → Local admin password | Password backed up; last rotation 11/15/2026 1:05 PM, next rotation 12/15/2026, which is the 30-day age set in `LAPS_Lab01` ([screenshot](screenshots/10i-laps.png)) |
+| Compliance | Intune → device → Device compliance | `Compliance_Lab01`: **Compliant**, last contacted 1:58 PM, after the drive was encrypted ([screenshot](screenshots/10j-compliant.png)) |
+| CA (Report-only) | Entra → Sign-in logs → Report-only tab | OfficeHome sign-in by `lab.user1`: `CA01`, RequireCompliantDevice, **Report-only: Success** ([screenshot](screenshots/10k-ca-reportonly.png)) |
+
+> The first compliance evaluation (1:47 PM) came before BitLocker was active, so the check was repeated after the sync. The 1:58 PM evaluation is the one shown above.
+>
+> Silent sign-ins to Office 365 resources are recorded on the **non-interactive** tab of the sign-in logs, not the interactive one. The interactive tab only showed the Windows sign-in, where `CA01` correctly reports **Not applicable** because the policy targets Office 365.
+
+A verification script that checks several of these from the device is in [`../../practice/Test-DeviceReadiness.ps1`](../../practice/Test-DeviceReadiness.ps1). Checks that need admin rights (`manage-bde`, `Get-Tpm`) have to run from an elevated session.
 
 ### Proving Conditional Access Works
 
@@ -610,6 +641,41 @@ A verification script that checks most of these from the device is in [`../../pr
 | 12 | `AADSTS50020` when opening the Entra admin center: first for a personal `live.com` account, then for the tenant admin against tenant **"Microsoft Services"** | The browser reused a cached personal Microsoft account session, which routes to Microsoft's "Microsoft Services" tenant. Switching accounts mid-flow kept that tenant (the same Correlation ID appeared on both errors). Intune still worked because it started a fresh sign-in | Opened the tenant-specific URL `entra.microsoft.com/JphanLabs.onmicrosoft.com`, which forces the correct tenant, and bookmarked it. Lesson: keep lab admin sessions in a separate browser profile |
 | 13 | Creating the Autopilot deployment profile failed validation with **Character "-" is not allowed** on the Name field | The profile name field rejects hyphens | Renamed the profile from `AP-UserDriven-EntraJoin` to `AP_UserDriven_EntraJoin`. Lesson: when a portal rejects a name, check the character rules before retrying |
 | 14 | While picking the CA target resource, a panel opened with **"You do not have the permissions needed to use custom security attributes"** and an empty rule builder | Clicked the link under *Select resources based on attributes* (the app filter) instead of the one under *Select specific resources*. Custom security attributes need a separate role that even Global Administrators don't hold by default | Left Configure on **No**, closed the panel, and picked **Office 365** from *Select specific resources*. The filter is not needed for this policy |
+| 15 | After Autopilot finished, Control Panel showed **C: BitLocker waiting for activation**. Intune reported the BitLocker policy as **Succeeded**, but the Encryption report showed **Not ready / Not encrypted** with TPM version **Unknown**, and no recovery key was escrowed | The Windows 11 ISO from Phase 0 was still attached to the VM's DVD drive. Event Viewer → BitLocker-API → Management logged **Event 853** on every policy refresh: *"Failed to enable Silent Encryption. TPM is not available."* followed by *"BitLocker Drive Encryption detected bootable media (CD or DVD)... Remove the media and restart the computer."* The headline text pointed at the TPM, but the host check showed the virtual TPM was enabled (`TpmEnabled : True`) | Ejected the ISO with `Set-VMDvdDrive -VMName W11-LAB-01 -ControllerNumber 0 -ControllerLocation 1 -Path $null`. The shorter form without the controller address ran without error but left the ISO attached. After a restart and a sync, C: showed **BitLocker on**, the recovery key was escrowed, and compliance passed. Lesson: Intune's "Succeeded" only means the settings were delivered, so read the device's own BitLocker-API log. Also check that no installation media is attached before an encryption test |
+| 16 | Right after the ESP, a **Windows Hello for Business** prompt appeared, then **"Let's keep your account secure"** (MFA registration). Closing it produced **"Something went wrong... We weren't able to set up your PIN"** with error `0x801c044f` | Windows Hello for Business is on by default for the tenant, and creating the Hello credential requires a second factor. The test user had no MFA method registered because security defaults are off and no CA policy requires MFA | Closed the MFA dialog and chose **Skip for now**. Enrollment, compliance, and Conditional Access were not affected, but the prompt returns at every sign-in. Options: register MFA for the test users in advance, or turn off Windows Hello for Business under Intune → Devices → Enrollment |
+| 17 | As the standard user: `tpm.msc` showed *"You must be an administrator"*, and **Turn on BitLocker** opened a UAC prompt for admin credentials | These tools need elevation. Autopilot's **User account type: Standard** setting means `lab.user1` can't elevate | Cancelled both. Verified from outside instead: the Control Panel status page, the BitLocker-API event log (readable without admin), the Intune Encryption report, and `Get-VMSecurity` on the host for the virtual TPM. The standard-user restriction working is the intended result of Phase 4 |
+| 18 | First sign-in as `lab.user1` forced a password change | The test accounts were created with **Require password change at first sign-in** | Set a new password at the prompt. Expected behavior, and the user then signed in normally |
+
+#### Evidence: Issue #15 (BitLocker waiting for activation)
+
+![BitLocker waiting for activation](screenshots/10e1-bitlocker-waiting.png)
+*Before: C: shows "BitLocker waiting for activation".*
+
+![BitLocker policy reports Succeeded](screenshots/10p-bitlocker-policy-status.png)
+*Intune reports the policy as delivered (2 Succeeded, 0 Error), so delivery was not the problem.*
+
+![Encryption report: Not ready](screenshots/10q-encryption-report.png)
+*Encryption report: readiness Not ready, status Not encrypted, TPM version Unknown (device name blurred).*
+
+![Event 853 in the BitLocker-API log](screenshots/10t-bitlocker-event.png)
+*Event 853: silent encryption failed because bootable media (CD or DVD) was detected.*
+
+![ISO ejected from the VM](screenshots/10t2-iso-ejected.png)
+*Host check showing `TpmEnabled : True`, then the plain eject command leaving the ISO attached, then the eject with the exact controller address (`DvdMediaType : None`).*
+
+![BitLocker on](screenshots/10e-bitlocker-status.png)
+*After the eject, a restart, and a sync: C: shows BitLocker on.*
+
+#### Evidence: Issue #16 (Windows Hello for Business prompt)
+
+![Windows Hello for Business prompt](screenshots/10l-whfb-prompt.png)
+*The prompt shown after the ESP.*
+
+![MFA registration required](screenshots/10l2-whfb-mfa-prompt.png)
+*Creating the Hello credential triggers MFA registration for a user with no second factor.*
+
+![PIN setup error](screenshots/10m-whfb-pin-error.png)
+*Closing the dialog gives error `0x801c044f`; **Skip for now** continues to the desktop (correlation ID blurred).*
 
 <details>
 <summary>Common issues reference</summary>
@@ -619,7 +685,7 @@ A verification script that checks most of these from the device is in [`../../pr
 | Device doesn't get Autopilot profile at OOBE | Profile not yet assigned (check "Profile status" on the Autopilot device); dynamic group membership still processing |
 | "Something went wrong" / 80180018 during enrollment | User not licensed for Intune, or MDM user scope doesn't include the user |
 | ESP stuck on apps | Win32 detection rule wrong, so Intune keeps thinking install failed |
-| BitLocker not encrypting silently | "Allow warning for other disk encryption" not disabled, or no TPM |
+| BitLocker not encrypting silently | "Allow warning for other disk encryption" not disabled, no TPM, or bootable media (ISO/DVD) still attached. Check Event Viewer → BitLocker-API → Management for Event 853 |
 | CA policy can't be created | Security defaults still enabled |
 | Device noncompliant right after enrollment | Compliance not yet evaluated; sync and wait before testing |
 
