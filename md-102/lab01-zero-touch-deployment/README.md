@@ -509,22 +509,53 @@ Every other setting was left at **Not configured**: Custom compliance, code inte
 ![Compliance policy created](screenshots/08g-compliance-created.png)
 *`Compliance_Lab01` created. Device counts are 0 until a device enrolls and evaluates the policy.*
 
-### Phase 9 – Conditional Access
+### Phase 9 – Conditional Access ✅
 
-**Entra → Protection → Conditional Access → New policy**
+The policy is created in **Report-only**. It is switched to **On** in [Proving Conditional Access Works](#proving-conditional-access-works), after a device has enrolled and reported compliant.
+
+#### 9.1 – Test users group (`SG-Lab-Users`)
+
+Conditional Access targets **users**, not devices, so the device group from Phase 2 can't be used here. A second group holds the users the policy applies to.
+
+**Entra → Groups → New group**
 
 | Setting | Value |
 |---------|-------|
-| Name | `CA01 - Require compliant device for M365` |
-| Users | Include: test users group · **Exclude: break-glass account** |
-| Target resources | Office 365 |
-| Conditions → Device platforms | Windows |
-| Grant | **Require device to be marked as compliant** |
-| Enable policy | **Report-only** first, then **On** after verification |
+| Group type | Security |
+| Group name | `SG-Lab-Users` |
+| Membership type | Assigned |
+| Members | `lab.user1`, `lab.user2` |
 
-> Starting in Report-only confirms the impact in sign-in logs before enforcing, the same change-management approach used in production.
+![SG-Lab-Users members](screenshots/09a-ca-user-group.png)
+*Both test users are direct members. The admin account and the break-glass account are not in the group.*
 
-📸 *Screenshot: CA policy summary*
+#### 9.2 – Policy (`CA01 - Require compliant device for M365`)
+
+**Entra → Conditional Access → Policies → New policy**
+
+| Section | Setting | Value | Why |
+|---------|---------|-------|-----|
+| Users | Include | `SG-Lab-Users` | Scoped to a pilot group, not All users |
+| Users | Exclude | `breakglass-admin` | Emergency access must never depend on a CA policy |
+| Target resources | Resources (formerly cloud apps) → Select resources | **Office 365** | Covers Exchange, SharePoint, Teams, and the Office apps as one unit |
+| Network | | Not configured | |
+| Conditions | Device platforms | **Windows** only | The lab only manages Windows devices |
+| Grant | Grant access | **Require device to be marked as compliant** | Ties access to the Phase 8 compliance policy |
+| Session | | Not configured | |
+| Enable policy | | **Report-only** | Impact is checked in the sign-in logs before enforcing |
+
+> Starting in Report-only confirms the impact in sign-in logs before enforcing, the same change-management approach used in production. **All resources** was avoided on purpose: it includes the admin portals and is the most common way to lock a tenant out.
+
+> Unlike the Intune name fields, the Conditional Access policy name accepts hyphens.
+
+![Grant control](screenshots/09c-ca-grant.png)
+*Grant access with one control: require device to be marked as compliant. The "Don't lock yourself out" warning appears for every policy that uses this control.*
+
+![CA policy before creation](screenshots/09d-ca-summary.png)
+*`SG-Lab-Users` included and `breakglass-admin` excluded, 1 resource, 1 condition, 1 grant control, **Report-only**.*
+
+![CA01 in the policy list](screenshots/09e-ca-policy-list.png)
+*`CA01` is the only policy in the tenant (0 Microsoft-managed policies, because the auto-create option was unchecked in Phase 1.3). State: **Report-only**.*
 
 ---
 
@@ -578,6 +609,7 @@ A verification script that checks most of these from the device is in [`../../pr
 | 11 | During a screenshot recheck, Automatic Enrollment showed **MDM user scope: None** | The original change to *All* was never saved (Save button state wasn't confirmed) | Set *All*, saved, reloaded the page to confirm it stuck. Caught before Phase 4, where it would have caused enrollment error 80180018. Lesson: after saving a portal setting, reload and verify |
 | 12 | `AADSTS50020` when opening the Entra admin center: first for a personal `live.com` account, then for the tenant admin against tenant **"Microsoft Services"** | The browser reused a cached personal Microsoft account session, which routes to Microsoft's "Microsoft Services" tenant. Switching accounts mid-flow kept that tenant (the same Correlation ID appeared on both errors). Intune still worked because it started a fresh sign-in | Opened the tenant-specific URL `entra.microsoft.com/JphanLabs.onmicrosoft.com`, which forces the correct tenant, and bookmarked it. Lesson: keep lab admin sessions in a separate browser profile |
 | 13 | Creating the Autopilot deployment profile failed validation with **Character "-" is not allowed** on the Name field | The profile name field rejects hyphens | Renamed the profile from `AP-UserDriven-EntraJoin` to `AP_UserDriven_EntraJoin`. Lesson: when a portal rejects a name, check the character rules before retrying |
+| 14 | While picking the CA target resource, a panel opened with **"You do not have the permissions needed to use custom security attributes"** and an empty rule builder | Clicked the link under *Select resources based on attributes* (the app filter) instead of the one under *Select specific resources*. Custom security attributes need a separate role that even Global Administrators don't hold by default | Left Configure on **No**, closed the panel, and picked **Office 365** from *Select specific resources*. The filter is not needed for this policy |
 
 <details>
 <summary>Common issues reference</summary>
