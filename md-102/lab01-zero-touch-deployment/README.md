@@ -1,6 +1,6 @@
 # Lab 01 – Zero-Touch Windows Deployment with Autopilot, Intune & Conditional Access
 
-![Status](https://img.shields.io/badge/status-in%20progress-yellow) ![Platform](https://img.shields.io/badge/platform-Windows%2011-blue) ![Intune](https://img.shields.io/badge/Microsoft-Intune-0078D4)
+![Status](https://img.shields.io/badge/status-complete-brightgreen) ![Platform](https://img.shields.io/badge/platform-Windows%2011-blue) ![Intune](https://img.shields.io/badge/Microsoft-Intune-0078D4)
 
 ## Business Scenario
 
@@ -300,7 +300,7 @@ Each CSV was imported separately. Intune accepts one file per import and disable
 | Privacy settings | Hide | Defaults applied by policy |
 | Hide change account options | Hide | Prevents personal-account setup |
 | User account type | **Standard** | User does not get local admin |
-| Apply device name template | Yes → `LAB_%SERIAL%` | Consistent naming (15-character max; `%SERIAL%` is truncated to fit) |
+| Apply device name template | Yes → `LAB-%SERIAL%` | Consistent naming (15-character max; `%SERIAL%` is truncated to fit, so the VM deployed as `LAB-` plus the last 11 serial digits) |
 | Assignment | `SG-Autopilot-Devices` | |
 
 > The profile name is `AP_UserDriven_EntraJoin`. The name field rejects hyphens (see [Issue #13](#issues--fixes)).
@@ -611,15 +611,51 @@ Get-VMDvdDrive -VMName W11-LAB-01    # DvdMediaType should read None
 
 A verification script that checks several of these from the device is in [`../../practice/Test-DeviceReadiness.ps1`](../../practice/Test-DeviceReadiness.ps1). Checks that need admin rights (`manage-bde`, `Get-Tpm`) have to run from an elevated session.
 
-### Proving Conditional Access Works
+### Proving Conditional Access Works ✅
 
-1. Switch the CA policy from Report-only to **On**
-2. Temporarily edit the compliance policy so the **minimum OS version** is higher than the device's build
-3. Sync the device (Settings → Accounts → Access work or school → Info → Sync)
-4. Device shows **Not compliant**, and opening Outlook or office.com is **blocked** with a "device must be compliant" message
-5. Revert the minimum OS version, sync again, and access is restored
+`CA01` was changed from Report-only to **On**, then the device was pushed out of compliance on purpose to show that access is actually blocked, and then fixed to show access returns. Compliance is the only variable that changed.
 
-📸 *Screenshots: noncompliant status, CA block page, sign-in log showing "Failure" with policy CA01*
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | Baseline: `Compliance_Lab01` shows the device compliant | Compliant: 1, Noncompliant: 0 |
+| 2 | `CA01` switched from **Report-only** to **On** | Policy state: On |
+| 3 | `Compliance_Lab01` → Device Properties → **Minimum OS version** raised from `10.0.22000.0` to `10.0.27000.0` (higher than the device's build) | Policy saved |
+| 4 | Intune **Sync** on the device | Device flips to **Not compliant** |
+| 5 | Signed out of Outlook on the web in the VM, then signed in again | **Blocked:** "Device must comply with your organization's compliance requirements" |
+| 6 | Entra sign-in log for the blocked attempt | `CA01`, grant control `RequireCompliantDevice`, result **Failure** |
+| 7 | Minimum OS version reverted to `10.0.22000.0`, Intune **Sync** | Device returns to **Compliant** |
+| 8 | Outlook on the web again | Access restored. Sign-in log shows `CA01` **Success**, grant controls **Satisfied** |
+
+![Compliance baseline](screenshots/11a-compliance-before.png)
+*Step 1: the policy shows 1 compliant device before the change (admin account blurred).*
+
+![Minimum OS version raised](screenshots/11b-compliance-min-os-raised.png)
+*Step 3: minimum OS version set to `10.0.27000.0`, above the device's build.*
+
+![Device not compliant](screenshots/11c-noncompliant.png)
+*Step 4: the device is **Not compliant** after the sync (device name and serial blurred).*
+
+![Conditional Access block page](screenshots/11d-ca-block.png)
+*Step 5: the block page the user sees.*
+
+![Sign-in failures in the log](screenshots/11e-signin-failure.png)
+*Step 6: two **Failure** rows for One Outlook Web against Office 365 Exchange Online (IP addresses blurred).*
+
+![CA01 failure detail](screenshots/11f-ca-failure-detail.png)
+*Step 6: the Conditional access tab names `CA01`, grant control `RequireCompliantDevice`, result Failure.*
+
+![Access restored](screenshots/11g-access-restored.png)
+*Step 8: the mailbox loads again after the device is compliant.*
+
+![Sign-in success](screenshots/11h-signin-success.png)
+*Step 8: new Success row for `lab.user1`, Conditional Access result **Success** (IPs and the admin sign-in blurred).*
+
+![CA01 success detail](screenshots/11i-ca01-success-detail.png)
+*Step 8: `CA01` is Enabled, user and resource matched, grant controls **Satisfied** (IP and device ID blurred).*
+
+> **What this shows:** Intune compliance is what Conditional Access reads. Raising one compliance setting turned a working sign-in into a block, and reverting it restored access, with no change to the CA policy itself.
+
+> **Timing:** Conditional Access is evaluated at sign-in and token issuance, not on every page load. A browser session that was already signed in kept working after the device went noncompliant. The block only appeared after signing out and signing in again. See [Issue #19](#issues--fixes).
 
 ---
 
@@ -645,6 +681,9 @@ A verification script that checks several of these from the device is in [`../..
 | 16 | Right after the ESP, a **Windows Hello for Business** prompt appeared, then **"Let's keep your account secure"** (MFA registration). Closing it produced **"Something went wrong... We weren't able to set up your PIN"** with error `0x801c044f` | Windows Hello for Business is on by default for the tenant, and creating the Hello credential requires a second factor. The test user had no MFA method registered because security defaults are off and no CA policy requires MFA | Closed the MFA dialog and chose **Skip for now**. Enrollment, compliance, and Conditional Access were not affected, but the prompt returns at every sign-in. Options: register MFA for the test users in advance, or turn off Windows Hello for Business under Intune → Devices → Enrollment |
 | 17 | As the standard user: `tpm.msc` showed *"You must be an administrator"*, and **Turn on BitLocker** opened a UAC prompt for admin credentials | These tools need elevation. Autopilot's **User account type: Standard** setting means `lab.user1` can't elevate | Cancelled both. Verified from outside instead: the Control Panel status page, the BitLocker-API event log (readable without admin), the Intune Encryption report, and `Get-VMSecurity` on the host for the virtual TPM. The standard-user restriction working is the intended result of Phase 4 |
 | 18 | First sign-in as `lab.user1` forced a password change | The test accounts were created with **Require password change at first sign-in** | Set a new password at the prompt. Expected behavior, and the user then signed in normally |
+| 19 | After the device went noncompliant with `CA01` On, Outlook on the web still loaded | Conditional Access evaluates at sign-in and token issuance. The session from earlier in the test was still valid, so nothing was re-evaluated | Signed out of Outlook and signed in again with the **Connected to Windows** account. The block page then appeared. Lesson: to prove enforcement, force a fresh sign-in |
+| 20 | A fresh sign-in attempt in an InPrivate window showed **"Sign in with your work account"** with a **Switch Edge profile** button | This is Edge's work-profile requirement, not Conditional Access. No CA entry appeared in the sign-in log for it | Closed the window and tested in the normal Edge window. Lesson: confirm the sign-in log shows `CA01` before calling something a CA block |
+| 21 | The Intune device list kept showing **Compliant** after the policy change, and the Monitor chart still counted one compliant device after revert | The list and charts lag behind the device record | Opened the device page for the real status and used **Sync** from the portal. The device page updated first |
 
 #### Evidence: Issue #15 (BitLocker waiting for activation)
 
@@ -697,7 +736,7 @@ A verification script that checks several of these from the device is in [`../..
 
 - Delete the device from **Intune → Devices**, then from **Autopilot devices** (Intune record must go first)
 - Delete the Entra device object
-- Set CA policy to **Off** or delete it
+- Set CA policy back to **Report-only** (or **Off**), or delete it, so it can't lock out a test device later
 - Remove test users or let the trial expire
 - Apply `Clean-OOBE` to the VMs, or delete them
 
