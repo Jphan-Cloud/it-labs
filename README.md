@@ -13,6 +13,7 @@ Hands-on labs covering Microsoft endpoint management and Linux self-hosting. Eac
 | # | Lab | Technologies | Status |
 |---|-----|--------------|--------|
 | 01 | [Zero-Touch Windows Deployment](md-102/lab01-zero-touch-deployment/) | Autopilot, Intune, Entra ID, BitLocker, Windows LAPS, Conditional Access | 🟢 Complete |
+| 02 | [Update Management with Update Rings](md-102/lab02-update-management/) | Intune Update Rings, Windows Update for Business, Autopilot | 🟡 In Progress |
 
 ### 🏠 Homelab
 
